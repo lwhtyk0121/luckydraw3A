@@ -27,7 +27,7 @@ const GroupingTool: React.FC<Props> = ({ participants }) => {
 
     const shuffled: Participant[] = shuffleArray<Participant>(participants);
     const groups: GroupResult[] = [];
-    
+
     for (let i = 0; i < shuffled.length; i += groupSize) {
       groups.push({
         groupName: `第 ${groups.length + 1} 組`,
@@ -35,16 +35,23 @@ const GroupingTool: React.FC<Props> = ({ participants }) => {
       });
     }
 
-    const enhancements = await getTeamEnhancements(groups.length);
-    if (enhancements && Array.isArray(enhancements)) {
-      enhancements.forEach((enh, idx) => {
-        if (groups[idx]) {
-          groups[idx].groupName = enh.groupName;
-          groups[idx].iceBreaker = enh.iceBreaker;
-        }
-      });
+    console.log("Starting grouping with", groups.length, "groups");
+    try {
+      const enhancements = await getTeamEnhancements(groups.length);
+      console.log("Enhancements received:", enhancements);
+      if (enhancements && Array.isArray(enhancements)) {
+        enhancements.forEach((enh, idx) => {
+          if (groups[idx]) {
+            groups[idx].groupName = enh.groupName;
+            groups[idx].iceBreaker = enh.iceBreaker;
+          }
+        });
+      }
+    } catch (e) {
+      console.error("Grouping enhancement error:", e);
     }
 
+    console.log("Setting results and finishing");
     setResults(groups);
     setIsGenerating(false);
   };
@@ -54,14 +61,14 @@ const GroupingTool: React.FC<Props> = ({ participants }) => {
 
     // Build CSV content
     const header = "組別,姓名\n";
-    const rows = results.flatMap(group => 
+    const rows = results.flatMap(group =>
       group.members.map(member => `${group.groupName},${member.name}`)
     ).join("\n");
-    
+
     const csvContent = "\uFEFF" + header + rows; // Add BOM for Excel support
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
-    
+
     const link = document.createElement("a");
     link.setAttribute("href", url);
     link.setAttribute("download", `分組結果_${new Date().toLocaleDateString()}.csv`);
@@ -77,20 +84,20 @@ const GroupingTool: React.FC<Props> = ({ participants }) => {
         <div className="flex-1 space-y-1">
           <label className="text-sm font-semibold text-gray-700">每組人數</label>
           <div className="flex items-center gap-3">
-            <input 
-              type="range" 
-              min="2" 
-              max="20" 
-              value={groupSize} 
+            <input
+              type="range"
+              min="2"
+              max="20"
+              value={groupSize}
               onChange={(e) => setGroupSize(parseInt(e.target.value))}
               className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-indigo-600"
             />
             <span className="w-12 text-center font-bold text-indigo-600 bg-indigo-50 rounded-md py-1 border border-indigo-100">{groupSize}</span>
           </div>
         </div>
-        
+
         <div className="flex-1 text-sm text-gray-500">
-           根據目前 {participants.length} 人，將分為 {Math.ceil(participants.length / groupSize)} 組
+          根據目前 {participants.length} 人，將分為 {Math.ceil(participants.length / groupSize)} 組
         </div>
 
         <button
@@ -110,14 +117,14 @@ const GroupingTool: React.FC<Props> = ({ participants }) => {
         <div className="space-y-4">
           <div className="flex justify-between items-center px-2">
             <h3 className="text-xl font-bold text-gray-800">分組結果</h3>
-            <button 
+            <button
               onClick={exportCSV}
               className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-bold shadow-sm transition-all"
             >
               <i className="fas fa-file-export"></i> 下載分組紀錄 (CSV)
             </button>
           </div>
-          
+
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {results.map((group, idx) => (
               <div key={idx} className="bg-white rounded-xl shadow-md border border-gray-100 overflow-hidden flex flex-col transform hover:-translate-y-1 transition-transform">
